@@ -19,6 +19,7 @@ pub struct BoolObjF64
 
 impl BoolObjF64
 {
+    #[inline]
     pub fn default() -> BoolObjF64
     {
         BoolObjF64
@@ -28,6 +29,7 @@ impl BoolObjF64
             f: 0.0
         }
     }
+    #[inline]
     pub fn new(nB: bool, nObj: Sphere, nF: f64) -> BoolObjF64
     {
         BoolObjF64
@@ -41,6 +43,7 @@ impl BoolObjF64
 
 impl BoolF64
 {
+    #[inline]
     pub fn default() -> Self
     {
         BoolF64
@@ -49,6 +52,7 @@ impl BoolF64
             f: 0.0
         }
     }
+    #[inline]
     pub fn new(nB: bool, nF: f64) -> BoolF64
     {
         BoolF64
@@ -75,6 +79,7 @@ impl From<BoolF64> for f64
 
 impl BoolVec3
 {
+    #[inline]
     pub fn default() -> BoolVec3
     {
         BoolVec3
@@ -83,6 +88,7 @@ impl BoolVec3
             vec3: Vec3::default(),
         }
     }
+    #[inline]
     pub fn new(nB: bool, nVec: Vec3) -> BoolVec3
     {
         BoolVec3

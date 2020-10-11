@@ -10,9 +10,9 @@ struct Camera
 
 impl Camera
 {
-    pub fn new(npos: Pos3, ndirect: Vec3, nr: f64, nf: f64) -> Camera
+    pub fn new(nPos: Pos3, nDirect: Vec3, nR: f64, nF: f64) -> Camera
     {
-        Camera{ pos: npos, direction: ndirect, aspectRatio: nr, focal: nf }
+        Camera{ pos: nPos, direction: nDirect, aspectRatio: nR, focal: nF }
     }
     pub fn default() -> Camera
     {

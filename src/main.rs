@@ -24,9 +24,9 @@ fn main()
     let aspectRatio: f64 = nx as f64 / ny as f64;
     let screenWidth: f64 = 2.0;
     let screenHeight: f64 = screenWidth/aspectRatio;
-    let samplePerScatter: u16 = 64;
+    let sampleRayStep: u8 = 8;
+    let samplePerScatter: u16 = 256; // Only on first scatter!
     let sampleSSAA_level: u8 = 4;
-    let samplePerRay: u8 = 8;
 
     let mut frameBuf = image::ImageBuffer::new(nx as u32, ny as u32);
 
@@ -38,13 +38,14 @@ fn main()
 
     let mut hitables: Vec<Sphere> = Vec::new();
 
-    hitables.push(Sphere::new(Pos3::new(0.0, -1.0, 0.0), 0.5, Material::DebugNormalShading { mode: 0 }));
+    hitables.push(Sphere::new(Pos3::new(0.0, -1.0, 0.0), 0.5, Material::DebugNormalShading { normal: Vec3::default(), mode: 0 })); // Debug Normal
+    // hitables.push(Sphere::new(Pos3::new(0.0, -1.0, 0.0), 0.5, Material::Emissive { emit: Color::new( 4.0, 4.0, 4.0 ) })); // Emissive
+    // hitables.push(Sphere::new(Pos3::new(0.0, -1.0, 0.0), 0.5, Material::Metal{ albedo: 0.95, fuzz: 0.0})); // Metal Mirror
 
-    // hitables.push(Sphere::new(Pos3::new(0.0, -1.0, 0.0), 0.5, Material::Metal{ albedo: 0.95, fuzz: 0.0}));
-    hitables.push(Sphere::new(Pos3::new(-0.16, 1.0, -0.175), 0.10, Material::Metal{ albedo: 0.75, fuzz: 0.36}));
-    hitables.push(Sphere::new(Pos3::new(4.0, -12.0, 3.6), 4.2, Material::Metal{ albedo: 0.85, fuzz: 0.01}));
+    hitables.push(Sphere::new(Pos3::new(-0.16, 1.0, -0.175), 0.10, Material::Metal{ albedo: Color::new(0.75, 0.75, 0.75), fuzz: 0.36, emit: Color::rgbEmpty() }));
+    hitables.push(Sphere::new(Pos3::new(4.0, -12.0, 3.6), 4.2, Material::Metal{ albedo: Color::new(0.85, 0.85, 0.85), fuzz: 0.0025, emit: Color::rgbEmpty() }));
 
-    hitables.push(Sphere::new(Pos3::new(0.0, -1.0, -256.5), 256.0, Material::Lambertian{ albedo: 0.5 }));
+    hitables.push(Sphere::new(Pos3::new(0.0, -1.0, -256.5), 256.0, Material::Lambertian{ albedo: Color::new(0.5, 0.5, 0.5), emit: Color::rgbEmpty() }));
 
     let delta: f64 = 1.0f64 / ((2*sampleSSAA_level) as f64);
     let multiplier: f64 = 1.0f64 / ((sampleSSAA_level*sampleSSAA_level) as f64);
@@ -77,26 +78,14 @@ fn main()
                     let v: f64 = sy / (ny as f64);
 
                     let directionRay: Vec3 = posUpperLeftCorner + horizontal*u - vertical*v - origin;
-                    let mut ray: Ray = Ray::new(origin, directionRay.unit(), Color::new(0.0, 0.0, 0.0), 4,0.0);
-                    // let statClosest:BoolObjF64 = hitStat(&ray, &hitables);
-                    //
-                    // if statClosest.bool
-                    // {
-                    //     let normal: Vec3 = (ray.at(statClosest.f ) - statClosest.obj.pos).unit();
-                    //     color += (Color::new((normal.x + 1.0) / 2.0, (normal.y + 1.0) / 2.0, (normal.z + 1.0) / 2.0).tidy()) * multiplier;
-                    // }
-                    // else
-                    // {
-                    //     // println!("No hit. Filling bg. ");
-                    //     let t: f64 = (ray.direction.z + 1.0)/2.0;
-                    //     color += ((1.0 - t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.4, 0.7, 1.0)) * multiplier;
-                    // }
-                    pathtracing(&mut ray, &hitables, samplePerScatter, samplePerRay);
+                    let mut ray: Ray = Ray::new(origin, directionRay.unit(), Color::new(0.0, 0.0, 0.0));
+                    pathtracing(&mut ray, &hitables, samplePerScatter, sampleRayStep);
                     color += ray.color*multiplier;
                 }
             }
 
-            rgb = color.gammaCorrection( 2.2 ).into();
+            rgb = color.into();
+            rgb = rgb.gammaCorrection();
             *pixel = image::Rgb([rgb.r, rgb.g, rgb.b]);
             count+=1;
 
@@ -113,38 +102,33 @@ fn main()
 
 fn pathtracing(ray: &mut Ray, list_hitable: &Vec<Sphere>, samplePerScatter: u16, step: u8)
 {
-    if step > 0
+    if step > 0 && samplePerScatter > 0
     {
         let stat: BoolObjF64 = hitStat(ray, list_hitable);
-        if stat.bool&(step > 1)
+        if stat.bool
         {
-            let mut rngFlag: bool = true;
-            let mut dbgFlag: bool = false;
-            match stat.obj.material
-            {
-                Material::Metal{ albedo, fuzz } => if fuzz == 0.0 { rngFlag = false; },
+            // let mut material: Material = stat.obj.material.clone();
+            let flagRng: bool = stat.obj.material.rngs();
+            let flagScatters: bool = stat.obj.material.scatters();
+            // let flag
+            let flagEmits: bool = stat.obj.material.emits();
 
-                //-!-!-!-DEBUG ONLY MATERIAL-!-!-!-//
-                Material::DebugNormalShading { mode } => dbgFlag = true,
-                Material::DebugNormalRaycasting {} => rngFlag = false,
-
-                _ => {},
-            }
-            let multiplier: f64 = (if rngFlag { 1.0 / (samplePerScatter as f64) } else { 1.0 });
-            match dbgFlag
+            let multiplier: f64 = (if flagRng { 1.0 / (samplePerScatter as f64) } else { 1.0 });
+            for _t in 0..(if flagRng { samplePerScatter } else { 1 })
             {
-                false =>
-                for t in 0..(if rngFlag { samplePerScatter } else { 1 })
+                if flagScatters
                 {
-                    let mut nRay: Ray = Ray::new(ray.at(stat.f), scatter(ray, &stat), Color::default(), step - 1, 0.0);
-                    pathtracing(&mut nRay, list_hitable, ((((samplePerScatter as f64).sqrt() * Material::albedo(stat.obj.material) + 0.5) as u16) + 1), step - 1);
-                    ray.color += (Material::albedo(stat.obj.material) * nRay.color) * multiplier;
-                },
-                true =>
+                    let mut nRay: Ray = Ray::new(ray.at(stat.f), scatter(ray, &stat), Color::default());
+                    pathtracing(&mut nRay, list_hitable, 1, step - 1);
+                    ray.color += stat.obj.material.albedo()*nRay.color*multiplier;
+                }
+                if flagEmits
                 {
-                    let mut nRay: Ray = Ray::new(Pos3::default(), scatter(ray, &stat), Color::default(), 0, 0.0);
-                    nRay.color = Color::new(nRay.direction.x, nRay.direction.y, nRay.direction.z).tidy();
-                    ray.color += (Material::albedo(stat.obj.material) * nRay.color);
+                    match stat.obj.material
+                    {
+                        Material::DebugNormalShading{ normal, mode } => { let normal = (ray.at( stat.f ) - stat.obj.pos).unit(); ray.color += Color::new(normal.x*0.64 + 0.36, normal.y*0.64 + 0.36, normal.z*0.64 + 0.36 );},
+                        _ => { ray.color += stat.obj.material.emit()*multiplier; } // NOTICE, emit is independent with scatter or absorb!
+                    }
                 }
             }
         }
@@ -152,9 +136,10 @@ fn pathtracing(ray: &mut Ray, list_hitable: &Vec<Sphere>, samplePerScatter: u16,
         {
             // Skylight
 
-            let t: f64 = (ray.direction.z + 1.0)/2.0;
-            ray.color = ((1.0 - t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.4, 0.7, 1.0))
-            // ray.color = Color::new(0.0, 0.0, 0.0);
+            // let t: f64 = (ray.direction.z + 1.0)/2.0;
+            // ray.color = ((1.0 - t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.4, 0.7, 1.0))
+
+            // ray.color = Color::new(0.01, 0.01, 0.01);
         }
     }
 }

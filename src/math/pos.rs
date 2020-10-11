@@ -24,10 +24,12 @@ pub struct Pos4
 
 impl Pos3
 {
+    #[inline]
     pub fn default() -> Self
     {
         Pos3 { x: 0.0, y: 0.0, z: 0.0 }
     }
+    #[inline]
     pub fn new(nx: f64, ny:f64, nz: f64) -> Pos3
     {
         Pos3 { x: nx, y: ny, z: nz }

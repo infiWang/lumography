@@ -10,6 +10,6 @@ pub struct Sphere
 
 impl Sphere
 {
-    pub fn default() -> Sphere { Sphere { pos: Pos3::default(), r: 0.0, material: Material::Lambertian{albedo: 0.0}} }
-    pub fn new(npos: Pos3, nr: f64, nm: Material) -> Sphere { Sphere { pos: npos, r: nr, material: nm } }
+    #[inline] pub fn default() -> Sphere { Sphere { pos: Pos3::default(), r: 0.0, material: Material::Emissive { emit: Color::new(1.0, 1.0, 1.0) } } }
+    #[inline] pub fn new(npos: Pos3, nr: f64, nm: Material) -> Sphere { Sphere { pos: npos, r: nr, material: nm } }
 }

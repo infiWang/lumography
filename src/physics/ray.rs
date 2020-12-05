@@ -21,13 +21,13 @@ impl Ray
         }
     }
     #[inline]
-    pub fn new(nOri: Pos3, nDirect: Vec3, nColor: Color) -> Ray
+    pub fn new(n_ori: Pos3, n_direct: Vec3, n_color: Color) -> Ray
     {
         Ray
         {
-            origin: nOri,
-            direction: nDirect,
-            color: nColor
+            origin: n_ori,
+            direction: n_direct,
+            color: n_color
         }
     }
 
@@ -38,27 +38,34 @@ impl Ray
 pub fn scatter(ray: &mut Ray, stat: &BoolObjF64) -> Vec3
 {
     let normal: Vec3 = (ray.at(stat.f ) - stat.obj.pos).unit();
-    match stat.obj.material
+
+    return match stat.obj.material
     {
-        Material::Metal { albedo, fuzz, emit } =>
+        Material::Metal{ albedo: _albedo, fuzz, emit: _emit } =>
         {
-            let mut rayDirection: Vec3 = ((*ray).direction | normal).unit();
-            rayDirection += fuzz.sqrt()*Vec3::rngUnit();
+            let mut ray_direction: Vec3 = ((*ray).direction | normal).unit();
+            if fuzz > 0.0 { ray_direction += fuzz.sqrt()*Vec3::rng_unit(); }
 
-            rayDirection.unit()
+            ray_direction.unit()
         },
-        Material::Lambertian { albedo, emit } =>
+        Material::Lambertian{ albedo: _albedo, emit: _emit } =>
         {
-            let mut rayDirection: Vec3 = Vec3::rngUnit();
-            if !(rayDirection&normal) { rayDirection = -rayDirection; }
+            let mut ray_direction: Vec3 = Vec3::rng_unit();
+            if !(ray_direction &normal) { ray_direction = -ray_direction; }
 
-            rayDirection
+            ray_direction
+        },
+        Material::Dielectric{ albedo: _albedo, refraction: _refraction, eta: _eta, fuzz, emit: _emit } =>
+        {
+            let mut ray_direction: Vec3 = ((*ray).direction | normal).unit();
+            if fuzz > 0.0 { ray_direction += fuzz.sqrt()*Vec3::rng_unit(); }
+
+            ray_direction.unit()
         },
 
         //-!-!-!-DEBUG ONLY MATERIAL-!-!-!-//
-        Material::DebugNormalShading { normal, mode } =>
+        Material::DebugNormalShading { normal: _normal, mode: _mode } =>
         {
-            // Vec3::new((normal.x + 1.0) / 2.0, (normal.y + 1.0) / 2.0, (normal.z + 1.0) / 2.0).unit()
             Vec3::default()
         },
         Material::DebugNormalRaycasting {} =>
@@ -66,6 +73,40 @@ pub fn scatter(ray: &mut Ray, stat: &BoolObjF64) -> Vec3
             normal
         },
 
+
+        _ => { Vec3::default() }
+    }
+}
+
+pub fn refract(ray: &mut Ray, stat: &BoolObjF64) -> Vec3
+{
+    let r_in_dir: Vec3 = ray.direction.unit();
+    let normal: Vec3 = (ray.at( stat.f ) - stat.obj.pos).unit();
+    let cos_theta: f64 = -r_in_dir*normal;
+    let sin_theta: f64 = (1f64 - cos_theta*cos_theta).abs().sqrt();
+    let ratio: f64 = if !(r_in_dir&normal) { 1.0 / stat.obj.material.eta() } else { stat.obj.material.eta() };
+    // let ratio: f64 = get_stat_eta(&Ray::new(ray.at(stat.f), if r_in_dir&normal { -normal } else { normal }, Color::default()), list_hitable, stat.obj)
+    //                / get_stat_eta(&Ray::new(ray.at(stat.f), if r_in_dir&normal { normal } else { -normal }, Color::default()), list_hitable, stat.obj);
+
+    return match stat.obj.material
+    {
+        Material::Dielectric { albedo: _albedo, refraction: _refraction, eta: _eta, fuzz, emit: _emit } =>
+            {
+                if sin_theta*ratio <= 1f64
+                {
+                    let r_out_dir_perp: Vec3 = ratio * (r_in_dir + cos_theta * normal);
+                    let r_out_dir_para: Vec3 = -(1.0 - r_out_dir_perp.len2()).abs().sqrt() * if r_in_dir&normal { -normal } else { normal };
+                    let ray_direction: Vec3 = r_out_dir_perp + r_out_dir_para;
+
+                    ray_direction.unit()
+                }
+                else
+                {
+                    let ray_direction: Vec3 = r_in_dir | if r_in_dir&normal { -normal } else { normal };
+
+                    ray_direction.unit()
+                }
+            },
 
         _ => { Vec3::default() }
     }

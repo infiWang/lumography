@@ -2,7 +2,8 @@ use crate::{math::*};
 use crate::{object::*};
 use crate::physics::{ray::*};
 
-const ZERO: f64 = 0.0001;
+const ZERO: f64 = 0.001;
+
 
 // SYMBOL& is "reloaded" to determine whether ray and sphere are intersected.
 impl std::ops::BitAnd<Sphere> for Ray
@@ -40,6 +41,7 @@ impl std::ops::BitAnd<Ray> for Sphere
         if discriminant_quarter > 0.0
         {
             let sqrt_d: f64 = discriminant_quarter.sqrt();
+
             (-b_half - sqrt_d) / a > ZERO || (-b_half + sqrt_d) / a > ZERO
         }
         else { false }
@@ -57,28 +59,27 @@ impl std::ops::Mul<Sphere> for Ray
         let b_half: f64 = oc * self.direction;
         let c: f64 = oc * oc - sphere.r*sphere.r;
         let discriminant_quarter: f64 = b_half*b_half - a*c;
-        // println!("r*s, a:{} b:{} c:{} delta:{}", a, b, c, discriminant);
 
         let mut res: BoolF64 = BoolF64::new(false, 0.0);
         if discriminant_quarter > 0.0
         {
             let sqrt_d: f64 = discriminant_quarter.sqrt();
 
-            let r1: f64 = (-b_half - sqrt_d) / a;
-            let r2: f64 = (-b_half + sqrt_d) / a;
-            if r1 > ZERO
+            let r_1: f64 = (-b_half - sqrt_d) / a;
+            let r_2: f64 = (-b_half + sqrt_d) / a;
+            if r_1 > ZERO && r_2 > ZERO
             {
                 res.bool = true;
-                res.f = r1;
+                res.f = if r_1 < r_2 { r_1 } else { r_2 };
             }
-            else if r2 > 0.001
+            else
             {
-                res.bool = true;
-                res.f = r2;
+                let r_bb = if r_1 < r_2 { r_2 } else { r_1 };
+                if r_bb > ZERO { res.bool = true; res.f = r_bb; }
             }
         }
 
-        res
+        return res;
     }
 }
 impl std::ops::Mul<Ray> for Sphere
@@ -99,46 +100,69 @@ impl std::ops::Mul<Ray> for Sphere
         {
             let sqrt_d: f64 = discriminant_quarter.sqrt();
 
-            let r1: f64 = (-b_half - sqrt_d) / a;
-            let r2: f64 = (-b_half + sqrt_d) / a;
-            if r1 > ZERO
+            let r_1: f64 = (-b_half - sqrt_d) / a;
+            let r_2: f64 = (-b_half + sqrt_d) / a;
+            if r_1 > ZERO && r_2 > ZERO
             {
                 res.bool = true;
-                res.f = r1;
+                res.f = if r_1 < r_2 { r_1 } else { r_2 };
             }
-            else if r2 > 0.001
+            else
             {
-                res.bool = true;
-                res.f = r2;
+                let r_bb = if r_1 < r_2 { r_2 } else { r_1 };
+                if r_bb > ZERO { res.bool = true; res.f = r_bb; }
             }
         }
 
-        res
+        return res;
     }
 }
 
-pub fn hitStat(ray: &Ray, listHitable: &Vec<Sphere>) -> BoolObjF64
+pub fn get_stat_hit(ray: &Ray, list_hitable: &Vec<Sphere>) -> BoolObjF64
 {
-    let mut list = listHitable.clone();
-    let mut statClosest: BoolObjF64 = BoolObjF64::default();
+    let mut list = list_hitable.clone();
+    let mut stat_closest: BoolObjF64 = BoolObjF64::default();
 
     for obj in list.iter()
     {
         let stat: BoolF64 = (*obj)*(*ray);
-        if stat.bool && stat.f > 0.001
+        if stat.bool && stat.f > ZERO
         {
-            // println!("Intersects! ");
-
-            if !statClosest.bool
+            if !stat_closest.bool
             {
-                statClosest = BoolObjF64::new(stat.bool, (*obj).clone(), stat.f);
+                stat_closest = BoolObjF64::new(stat.bool, (*obj).clone(), stat.f);
             }
-            else if stat.f < statClosest.f
+            else if stat.f < stat_closest.f
             {
-                statClosest = BoolObjF64::new(stat.bool, (*obj).clone(), stat.f);
+                stat_closest = BoolObjF64::new(stat.bool, (*obj).clone(), stat.f);
             }
         }
     }
 
-    statClosest
+    return stat_closest;
+}
+pub fn get_stat_eta(ray: &Ray, list_hitable: &Vec<Sphere>, cur_obj_stat: Sphere) -> f64
+{
+    let mut stat_closest: BoolObjF64 = BoolObjF64::default();
+    let mut eta = 1.0;
+
+    for obj in (*list_hitable).iter()
+    {
+        let stat: BoolF64 = (*obj)*(*ray);
+        if stat.bool && stat.f > ZERO
+        {
+            if !stat_closest.bool
+            {
+                stat_closest = BoolObjF64::new(stat.bool, (*obj).clone(), stat.f);
+                eta = stat_closest.obj.material.eta();
+            }
+            else if stat.f < stat_closest.f
+            {
+                stat_closest = BoolObjF64::new(stat.bool, (*obj).clone(), stat.f);
+                eta = stat_closest.obj.material.eta();
+            }
+        }
+    }
+
+    return if cur_obj_stat != stat_closest.obj { 1f64 } else { eta };
 }

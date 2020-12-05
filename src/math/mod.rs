@@ -1,6 +1,8 @@
+mod algebra;
 mod tuple;
-mod pos;
-mod vec;
+mod vector;
+mod position;
+mod matrix;
 mod color;
 
-pub use self::{tuple::*, pos::*, vec::*, color::*};
+pub use self::{algebra::*, tuple::*, vector::*, position::*, matrix::*, color::*};

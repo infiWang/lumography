@@ -30,13 +30,13 @@ impl BoolObjF64
         }
     }
     #[inline]
-    pub fn new(nB: bool, nObj: Sphere, nF: f64) -> BoolObjF64
+    pub fn new(n_b: bool, n_obj: Sphere, n_f: f64) -> BoolObjF64
     {
         BoolObjF64
         {
-            bool: nB,
-            obj: nObj,
-            f: nF
+            bool: n_b,
+            obj: n_obj,
+            f: n_f
         }
     }
 }
@@ -53,12 +53,12 @@ impl BoolF64
         }
     }
     #[inline]
-    pub fn new(nB: bool, nF: f64) -> BoolF64
+    pub fn new(n_b: bool, n_f: f64) -> BoolF64
     {
         BoolF64
         {
-            bool: nB,
-            f: nF
+            bool: n_b,
+            f: n_f
         }
     }
 }
@@ -89,12 +89,12 @@ impl BoolVec3
         }
     }
     #[inline]
-    pub fn new(nB: bool, nVec: Vec3) -> BoolVec3
+    pub fn new(n_b: bool, n_vec: Vec3) -> BoolVec3
     {
         BoolVec3
         {
-            bool: nB,
-            vec3: nVec,
+            bool: n_b,
+            vec3: n_vec,
         }
     }
 }
